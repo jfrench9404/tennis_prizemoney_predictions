@@ -1,7 +1,7 @@
 # tennis_prizemoney_predictions
 This utilizes the tennis database to help prospective players choose which tournaments to sign up for that will give them the most success.
 
-In professional tennis, there are many tournaments around the world that you could play in? The biggest question is: which one's do we compete in? Which one's will give me the best chance to succeed and rack in the money prize money?
+In professional tennis, there are many tournaments around the world that you could play in. The biggest question is: which one's do we compete in? Which one's will give me the best chance to succeed and rack in the money prize money?
 
 In a volatile sport, there is no financial security unless you are in the top 5% of players (globally). Historically, unless you were winning a tournament, you couldn't sustain a long career in professional tennis. 90% of the prize pool was dominated by 1% of the player base, with everyone else struggling to scrap together enough prize pool to make it on tour.
 
