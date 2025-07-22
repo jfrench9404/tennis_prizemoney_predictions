@@ -1,0 +1,1361 @@
+---
+title: "tennis_project"
+author: "John French"
+date: "2024-10-30"
+output:
+  html_document: default
+  pdf_document: default
+---
+### Starting Strong:
+## How to start off on the right foot on the ATP Tour
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(purrr)
+library(ggrepel)
+library(stringr)
+library(ggdark) # Install ggdark
+library(ggimage) # Install ggimage
+library(reshape) # Install reshape
+library(ggridges) # Install ggridges
+library(randomForest)
+library(caret)
+library(xgboost)
+library(xgboostExplainer) # Load XGboost Explainer
+library(pROC) # Load proc
+library(SHAPforxgboost)
+library(data.table)
+library(cluster)    # clustering algorithms
+library(factoextra) # clustering visualization
+library(dendextend) # for comparing two dendrograms
+library(pROC)
+library(ggforce)
+source("a_insights_shap_functions.r")
+```
+In professional tennis, there are many tournaments around the world that you could play in? The biggest question is: which one's do we compete in? Which one's will give me the best chance to succeed and rack in the money prize money?
+
+In a volatile sport, there is no financial security unless you are in the top 5% of players (globally). Historically, unless you were winning a tournament, you couldn't sustain a long career in professional tennis. 90% of the prize pool was dominated by 1% of the player base, with everyone else struggling to scrap together enough prize pool to make it on tour.
+
+The financial breakdown of players is as such (for players ranked outside of the top 200):
+- 90% -> prize money
+- 10% -> endorsements, sponsorships, benefactors, etc.
+
+There is very little if no sponsorship deals that can feasibly help players (in today's game) that help them generate a beneficial lifestyle. The ESPN article in 2023 points this out, as many players can barely find the funding necessarily to cover costs and travel expenses that stack up at the end of each year.
+
+In recent years, the WTA, ATP, and the 4 majors have partnered together to distribute prize money more evenly across rounds, giving lower ranked players the opportunity to continue to play and compete in the sport they love without being distracted financially. While some could point to sponsors as an option, a bigger reason for winning is to get your name out there for sponsors to recognize you. In 2021, Matteo Berritini made it to the Wimbledon Finals for the first time in his career. Prior to this achievement, he hadn't reached a Semis. This breakthrough has elevated his status in the men's game, giving a fresh look for companies to sponsor travel and cover costs that otherwise would need to be covered by prize money.
+
+In this program, we are going to be looking at which tournaments give men's players an edge in the game. Are there some tournaments where Lucky Losers or Qualifying players have more success in? Are there certain players at a certain rank (ranked 200 or lower [lower meaning 201, 202, etc.]) to determine if there are players in a specific tournament that is playing in it, should you avoid it.
+
+To establish context, each professional tournament holds qualifying rounds prior to the official start date of the tournament. These rounds are used to determine the last remaining open spots on the draw and gives lower ranked players a chance to earn a spot on the draw that otherwise would've been taken up by a higher ranked player. When you see a "qualifying player" or "Q" next to a player's name, that means they won it through the Qualifying Rounds to make it into the Main Draw.
+
+Lucky Losers are essentially "lucky." These are players that lost in the Qualifying Rounds but are chosen by the tournament director and are given a "second chance" to compete in the Main Draw. Maybe it was a bad day?
+
+To simplify our goals further, we will be looking at two questions:
+
+- Are there tournaments that we are favored to win in rather than another?
+- Are there players we should avoid playing in a tournament with?
+
+This question will be primarily answered by looking at the amount of break point chances we can face and how hard it is to play our second serve into the opponent. If the player doesn't give many chances and can attack our second serve, we must play perfect. Otherwise, it will be a tough match to win.
+  
+- Can you predict you're likelihood to win or determine how far you'd go in a tournament based on your rank and court preference?
+
+We will be specifically looking at men's tennis, ATP data on the singles side in order to determine what tournaments are the best for us to compete in.
+
+Since the downward trend of the Big 3 in the men's game, the levels of the players are all over the board. There is no solid favorite to win tournaments or slams like it has over the past 2 decades. If you are looking to get ahead of the pack and get into the big tournaments to get a shot to make history, now is the time. Now, let's see where you should start playing first.
+
+######### Nadal vs. Djokovic in 2019 Aussie Final ##########
+```{r cars}
+points = read.csv("C:/Users/John/Downloads/points.csv")
+rallies = read.csv("C:/Users/John/Downloads/rallies.csv")
+serves = read.csv("C:/Users/John/Downloads/serves.csv")
+```
+#############################################################
+
+
+############ Cleaning for all matches from 2000-Beginning of 2017 ###############
+
+```{r}
+atp_00 = read.csv("C:/Users/John/Downloads/atp_futures/atp_matches_2000.csv")
+atp_01 = read.csv("C:/Users/John/Downloads/atp_futures/atp_matches_2001.csv")
+atp_02 = read.csv("C:/Users/John/Downloads/atp_futures/atp_matches_2002.csv")
+atp_03 = read.csv("C:/Users/John/Downloads/atp_futures/atp_matches_2003.csv")
+atp_04 = read.csv("C:/Users/John/Downloads/atp_futures/atp_matches_2004.csv")
+atp_05 = read.csv("C:/Users/John/Downloads/atp_futures/atp_matches_2005.csv")
+atp_06 = read.csv("C:/Users/John/Downloads/atp_futures/atp_matches_2006.csv")
+atp_07 = read.csv("C:/Users/John/Downloads/atp_futures/atp_matches_2007.csv")
+atp_08 = read.csv("C:/Users/John/Downloads/atp_futures/atp_matches_2008.csv")
+atp_09 = read.csv("C:/Users/John/Downloads/atp_futures/atp_matches_2009.csv")
+atp_10 = read.csv("C:/Users/John/Downloads/atp_futures/atp_matches_2010.csv")
+atp_11 = read.csv("C:/Users/John/Downloads/atp_futures/atp_matches_2011.csv")
+atp_12 = read.csv("C:/Users/John/Downloads/atp_futures/atp_matches_2012.csv")
+atp_13 = read.csv("C:/Users/John/Downloads/atp_futures/atp_matches_2013.csv")
+atp_14 = read.csv("C:/Users/John/Downloads/atp_futures/atp_matches_2014.csv")
+atp_15 = read.csv("C:/Users/John/Downloads/atp_futures/atp_matches_2015.csv")
+atp_16 = read.csv("C:/Users/John/Downloads/atp_futures/atp_matches_2016.csv")
+atp_17 = read.csv("C:/Users/John/Downloads/atp_futures/atp_matches_2017.csv")
+```
+
+########## Loading in prize money database ##########
+```{r}
+library(readxl)
+
+gs_pm <- read_excel("C:/Users/John/Downloads/atp_singles_prize_money.xlsx", sheet = "Grandslams",
+    skip = 1)
+
+masters_pm <- read_excel("C:/Users/John/Downloads/atp_singles_prize_money.xlsx", 
+    sheet = "Masters 1000", skip = 1)
+
+atp_500_96pm <- read_excel("C:/Users/John/Downloads/atp_singles_prize_money.xlsx", 
+    sheet = "500 R96", skip = 1)
+
+atp_500_64pm <- read_excel("C:/Users/John/Downloads/atp_singles_prize_money.xlsx", 
+    sheet = "500 R64", skip = 1)
+
+pm_250 <- read_excel("C:/Users/John/Downloads/atp_singles_prize_money.xlsx", 
+    sheet = "250", skip = 1)
+
+challengers_pm <- read_excel("C:/Users/John/Downloads/atp_singles_prize_money.xlsx", 
+    sheet = "Challengers", skip = 1)
+
+special_pm <- read_excel("C:/Users/John/Downloads/atp_singles_prize_money.xlsx", 
+    sheet = "Special", skip = 1)
+```
+
+############ Switching Columns and row headers in each dataset ###########
+```{r}
+library(tidyr)
+library(tibble)
+
+atp_500_64pm <- as.data.frame(t(atp_500_64pm))
+colnames(atp_500_64pm) <- atp_500_64pm[1, ]  # Use the first row as column names
+atp_500_64pm <- atp_500_64pm[-1, ]    
+atp_500_64pm <- rownames_to_column(atp_500_64pm, var = "Tournament")
+atp_500_64pm[, 2:9] <- lapply(atp_500_64pm[, 2:9], as.numeric)
+
+atp_500_96pm <- as.data.frame(t(atp_500_96pm))
+colnames(atp_500_96pm) <- atp_500_96pm[1, ]  # Use the first row as column names
+atp_500_96pm <- atp_500_96pm[-1, ] 
+atp_500_96pm <- rownames_to_column(atp_500_96pm, var = "Tournament")
+atp_500_96pm[, 2:10] <- lapply(atp_500_96pm[, 2:10], as.numeric)
+
+gs_pm <- as.data.frame(t(gs_pm))
+colnames(gs_pm) <- gs_pm[1, ]  # Use the first row as column names
+gs_pm <- gs_pm[-1, ]    
+gs_pm <- rownames_to_column(gs_pm, var = "Tournament")
+gs_pm[, 2:12] <- lapply(gs_pm[, 2:12], as.numeric)
+
+masters_pm <- as.data.frame(t(masters_pm))
+colnames(masters_pm) <- masters_pm[1, ]  # Use the first row as column names
+masters_pm <- masters_pm[-1, ]    
+masters_pm <- rownames_to_column(masters_pm, var = "Tournament")
+masters_pm[, 2:11] <- lapply(masters_pm[, 2:11], as.numeric)
+
+special_pm <- as.data.frame(t(special_pm))
+colnames(special_pm) <- special_pm[1, ]  # Use the first row as column names
+special_pm <- special_pm[-1, ]    
+special_pm <- rownames_to_column(special_pm, var = "Tournament")
+special_pm[, 2:10] <- lapply(special_pm[, 2:10], as.numeric)
+
+challengers_pm <- as.data.frame(t(challengers_pm))
+colnames(challengers_pm) <- challengers_pm[1, ]  # Use the first row as column names
+challengers_pm <- challengers_pm[-1, ]   
+challengers_pm <- rownames_to_column(challengers_pm, var = "Tournament")
+challengers_pm[, 2:9] <- lapply(challengers_pm[, 2:9], as.numeric)
+
+pm_250 <- as.data.frame(t(pm_250))
+colnames(pm_250) <- pm_250[1, ]  # Use the first row as column names
+pm_250 <- pm_250[-1, ]    
+pm_250 <- rownames_to_column(pm_250, var = "Tournament")
+pm_250[, 2:9] <- lapply(pm_250[, 2:9], as.numeric)
+
+
+```
+
+######################################################
+
+```{r}
+list_atp = list(atp_00, atp_01, atp_02, atp_03, atp_04, atp_05, atp_06, atp_07, atp_08, atp_09, atp_10, atp_11, atp_12, atp_13, atp_14, atp_15, atp_16, atp_17)
+
+list_headers = c(colnames(atp_00))
+
+list_atp <- lapply(list_atp, function(df) {
+  if ("tourney_id" %in% colnames(df)) {
+    df <- dplyr::rename(df, `tourney-id` = tourney_id)
+  }
+  df
+})
+
+list_headers[[1]] = "tourney-id"
+
+all_atp = purrr::reduce(list_atp, full_join, by = list_headers)
+```
+
+######################################################################
+
+
+########### Adding in important metrics for analysis #################
+```{r}
+all_atp$w_2ndin = all_atp$w_svpt- all_atp$w_1stIn
+all_atp$l_2ndin = all_atp$l_svpt - all_atp$l_1stIn
+all_atp$w_1st_serve_per = 100*(all_atp$w_1stIn/all_atp$w_svpt)
+all_atp$l_1st_serve_per = 100*(all_atp$l_1stIn/all_atp$l_svpt)
+all_atp$w_1st_serve_ptsWon_per = 100*(all_atp$w_1stWon/all_atp$w_1stIn)
+all_atp$l_1st_serve_ptsWon_per =  100*(all_atp$l_1stWon/all_atp$l_1stIn)
+all_atp$w_2nd_serve_ptsWon_per = 100*(all_atp$w_2ndWon/all_atp$w_2ndin)
+all_atp$l_2nd_serve_ptsWon_per = 100*(all_atp$l_2ndWon/all_atp$l_2ndin)
+all_atp$w_bpWon_per =  100*(((all_atp$l_bpSaved)/all_atp$l_bpFaced))
+all_atp$l_bpWon_per =  100*(((all_atp$w_bpSaved)/all_atp$w_bpFaced))
+all_atp$w_bp = all_atp$l_bpSaved/ all_atp$l_bpFaced
+all_atp$l_bp = all_atp$w_bpSaved/ all_atp$w_bpFaced
+```
+
+Remove Nas and clean up date and tourney level
+
+```{r}
+## Correct Tourney Levels
+# G = Grand Slam
+# M = Masters 1000
+# F = Masters Cup, ATP Tour Finals
+# A = ATP 250, 500, Challengers
+# D = Davis Cup
+# C = Challenger Tour Finals, Wrexham and Curibita CH tournaments
+
+v = c("A", "G", "M", "F", "D", "C")
+
+filtered_all_atp <- all_atp %>%
+  filter(tourney_level %in% v)
+
+all_atp <- collect(filtered_all_atp)
+
+## Correct Date types
+for (i in 1:nrow(all_atp)){
+  all_atp$tourney_date[i] <- as.character(all_atp$tourney_date[i])
+}
+
+all_atp$tourney_date <- as.Date(all_atp$tourney_date, format = "%Y%m%d")
+```
+
+Dividing Up Data to Focus on Certain Variables
+
+```{r}
+################# THE BIG 3 #######################
+atp_rf <- all_atp |>
+  filter(winner_name == "Roger Federer" | loser_name == "Roger Federer")
+
+atp_rn <- all_atp |>
+  filter(winner_name == "Rafael Nadal" | loser_name == "Rafael Nadal")
+
+atp_nj <- all_atp |>
+  filter(winner_name == "Novak Djokovic" | loser_name == "Novak Djokovic")
+
+################## Lower Tier Tournaments ###################
+atp_lower <- all_atp |>
+  filter(tourney_level %in% "A")
+  
+```
+
+Entry defintions:
+Q: Qualifier
+WC: Wild card
+LL: Lucky loser
+PR: Protected Ranking (for injured players)
+SE: Special Exemption
+
+```{r}
+upsets <- all_atp |>
+  filter(winner_entry %in% c("LL","Q"))
+
+low_ranks <- all_atp |>
+  filter(winner_rank > 300)
+
+```
+
+Adding in the prize money for tournaments
+```{r}
+
+# These tournaments have been discontinued or paused due to COVID or did not offer any prize money (i.e. Olympics) so they are not included in this report
+
+excluded_tournaments <- c("Quito", "Orlando", "Long Island", "Sofia", "Moscow", "St. Petersburg", "Tashkent", "Nice", "Memphis", "Johannesburg", "Istanbul", "Indianapolis", "Ho Chi Minh City", "Dusseldorf", "Copenhagen", "Brighton", "Challenger Tour Finals", "Olympics", "Beijing Olympics", "London", "London Olympics", "Athens Olympics", "Palmero", "St. Poelten", "ATP Challenger Tour Finals CH", "Sydney Olympics", "Tour Finals", "Wrexham CH", "Sopot", "St.Petersburg", "Sopot - WS", "Poertschach", "Warsaw", "Power Horse Cup", "Masters Cup")
+
+# Filter out the excluded tournaments
+no_davis <- all_atp |>
+  filter(!grepl("Davis Cup", tourney_name, ignore.case = TRUE))
+
+atp <- no_davis %>%
+  filter(!tourney_name %in% excluded_tournaments)
+
+atp$tourney_name <- str_replace_all(atp$tourney_name, c("Viña del Mar" = "Vina del Mar", "'s-Hertogenbosch" = "s-Hertogenbosch", "Shanghai Masters" = "Shanghai", "Us Open" = "US Open", "Stuttgart Masters" = "Stuttgart", "Stuttgart Outdoor" = "Stuttgart"))
+
+```
+
+Making the round a categorical numeric variable to use in models and adding a prize money column
+```{r}
+atp$prize_money <- NA
+atp$round_num <- NA
+rounds <- c("R32",  "R16",  "QF",   "SF",   "F", "R128", "R64")
+vals <- c(7, 6, 5, 4, 3, 9, 8)
+
+
+for(i in 1:nrow(atp)){
+  if(atp$tourney_name[i] %in% gs_pm$Tournament){
+    atp$prize_money[i] <- gs_pm[which(gs_pm$Tournament == atp$tourney_name[i]), vals[which(atp$round[i] == rounds)]]
+  }
+}
+
+
+## Matching up our prize money databases with our atp dataset we will be using
+
+for (i in 1:nrow(atp)){
+  for (r in 1:nrow(gs_pm)){
+    if(gs_pm[r,1] == atp$tourney_name[i] & atp$round[i] == "F") {
+        atp$prize_money[i] = gs_pm[r,which(names(gs_pm) == "Runner-up")]
+        atp$round_num[i] = 6
+     } else if (gs_pm[r,1] == atp$tourney_name[i] & atp$round[i] == "SF"){
+        atp$prize_money[i] = gs_pm[r,which(names(gs_pm) == "Semifinal")]
+        atp$round_num[i] = 5
+     } else if (gs_pm[r,1] == atp$tourney_name[i] & atp$round[i] == "QF"){
+        atp$prize_money[i] = gs_pm[r,which(names(gs_pm) == "Quarterfinal")]
+        atp$round_num[i] = 4
+     } else if (gs_pm[r,1] == atp$tourney_name[i] & atp$round[i] == "R16"){
+        atp$prize_money[i] = gs_pm[r,which(names(gs_pm) == "Round 4")]
+        atp$round_num[i] = 3
+     } else if (gs_pm[r,1] == atp$tourney_name[i] & atp$round[i] == "R32"){
+        atp$prize_money[i] = gs_pm[r,which(names(gs_pm) == "Round 3")]
+        atp$round_num[i] = 2
+     } else if (gs_pm[r,1] == atp$tourney_name[i] & atp$round[i] == "R64"){
+        atp$prize_money[i] = gs_pm[r,which(names(gs_pm) == "Round 2")]
+        atp$round_num[i] = 1
+     } else if (gs_pm[r,1] == atp$tourney_name[i] & atp$round[i] == "R128"){
+        atp$prize_money[i] <- gs_pm[r,which(names(gs_pm) == "Round 1")]
+        atp$round_num[i] = 0
+         }
+  }
+}
+
+for (i in 1:nrow(atp)){
+  for (r in 1:nrow(masters_pm)){
+    if(masters_pm[r,1] == atp$tourney_name[i] & atp$round[i] == "F") {
+        atp$prize_money[i] = masters_pm[r,which(names(masters_pm) == "Runner-up")]
+        atp$round_num[i] = 6
+     } else if (masters_pm[r,1] == atp$tourney_name[i] & atp$round[i] == "SF"){
+        atp$prize_money[i] = masters_pm[r,which(names(masters_pm) == "Semifinal")]
+        atp$round_num[i] = 5
+     } else if (masters_pm[r,1] == atp$tourney_name[i] & atp$round[i] == "QF"){
+        atp$prize_money[i] = masters_pm[r,which(names(masters_pm) == "Quarterfinal")]
+        atp$round_num[i] = 4
+     } else if (masters_pm[r,1] == atp$tourney_name[i] & atp$round[i] == "R16"){
+        atp$prize_money[i] = masters_pm[r,which(names(masters_pm) == "Round 4")]
+        atp$round_num[i] = 3
+     } else if (masters_pm[r,1] == atp$tourney_name[i] & atp$round[i] == "R32"){
+        atp$prize_money[i] = masters_pm[r,which(names(masters_pm) == "Round 3")]
+        atp$round_num[i] = 2
+     } else if (masters_pm[r,1] == atp$tourney_name[i] & atp$round[i] == "R64"){
+        atp$prize_money[i] = masters_pm[r,which(names(masters_pm) == "Round 2")]
+        atp$round_num[i] = 1
+     } else if (masters_pm[r,1] == atp$tourney_name[i] & atp$round[i] == "R128"){
+        atp$prize_money[i] = masters_pm[r,which(names(masters_pm) == "Round 1")]
+        atp$round_num[i] = 0
+     }
+  }
+}
+
+for (i in 1:nrow(atp)){
+  for (r in 1:nrow(atp_500_64pm)){
+    if(atp_500_64pm[r,1] == atp$tourney_name[i] & atp$round[i] == "F") {
+        atp$prize_money[i] = atp_500_64pm[r,which(names(atp_500_64pm) == "Runner-up")]
+        atp$round_num[i] = 4 
+     } else if (atp_500_64pm[r,1] == atp$tourney_name[i] & atp$round[i] == "SF"){
+        atp$prize_money[i] = atp_500_64pm[r,which(names(atp_500_64pm) == "Semifinal")]
+        atp$round_num[i] = 3
+     } else if (atp_500_64pm[r,1] == atp$tourney_name[i] & atp$round[i] == "QF"){
+        atp$prize_money[i] = atp_500_64pm[r,which(names(atp_500_64pm) == "Quarterfinal")]
+        atp$round_num[i] = 2
+     } else if (atp_500_64pm[r,1] == atp$tourney_name[i] & atp$round[i] == "R16"){
+        atp$prize_money[i] = atp_500_64pm[r,which(names(atp_500_64pm) == "Round 2")]
+        atp$round_num[i] = 1
+     } else if (atp_500_64pm[r,1] == atp$tourney_name[i] & atp$round[i] == "R32"){
+        atp$prize_money[i] = atp_500_64pm[r,which(names(atp_500_64pm) == "Round 1")]
+        atp$round_num[i] = 0
+     }
+  }
+}
+
+for (i in 1:nrow(atp)){
+  for (r in 1:nrow(atp_500_96pm)){
+    if(atp_500_96pm[r,1] == atp$tourney_name[i] & atp$round[i] == "F") {
+        atp$prize_money[i] = atp_500_96pm[r,which(names(atp_500_96pm) == "Runner-up")]
+        atp$round_num[i] = 5
+     } else if (atp_500_96pm[r,1] == atp$tourney_name[i] & atp$round[i] == "SF"){
+        atp$prize_money[i] = atp_500_96pm[r,which(names(atp_500_96pm) == "Semifinal")]
+        atp$round_num[i] = 4
+     } else if (atp_500_96pm[r,1] == atp$tourney_name[i] & atp$round[i] == "QF"){
+        atp$prize_money[i] = atp_500_96pm[r,which(names(atp_500_96pm) == "Quarterfinal")]
+        atp$round_num[i] = 3
+     } else if (atp_500_96pm[r,1] == atp$tourney_name[i] & atp$round[i] == "R16"){
+        atp$prize_money[i] = atp_500_96pm[r,which(names(atp_500_96pm) == "Round 3")]
+        atp$round_num[i] = 2
+     } else if (atp_500_96pm[r,1] == atp$tourney_name[i] & atp$round[i] == "R32"){
+        atp$prize_money[i] = atp_500_96pm[r,which(names(atp_500_96pm) == "Round 2")]
+        atp$round_num[i] = 1
+     } else if (atp_500_96pm[r,1] == atp$tourney_name[i] & atp$round[i] == "R64"){
+        atp$prize_money[i] = atp_500_96pm[r,which(names(atp_500_96pm) == "Round 1")]
+        atp$round_num[i] = 0
+     }
+  }
+}
+
+for (i in 1:nrow(atp)){
+  for (r in 1:nrow(challengers_pm)){
+    if(challengers_pm[r,1] == atp$tourney_name[i] & atp$round[i] == "F") {
+        atp$prize_money[i] = challengers_pm[r,which(names(challengers_pm) == "Runner Up")]
+        atp$round_num[i] = 4
+     } else if (challengers_pm[r,1] == atp$tourney_name[i] & atp$round[i] == "SF"){
+        atp$prize_money[i] = challengers_pm[r,which(names(challengers_pm) == "Semifinal")]
+        atp$round_num[i] = 3
+     } else if (challengers_pm[r,1] == atp$tourney_name[i] & atp$round[i] == "QF"){
+        atp$prize_money[i] = challengers_pm[r,which(names(challengers_pm) == "Quarterfinal")]
+        atp$round_num[i] = 2
+     } else if (challengers_pm[r,1] == atp$tourney_name[i] & atp$round[i] == "R16"){
+        atp$prize_money[i] = challengers_pm[r,which(names(challengers_pm) == "Round 2")]
+        atp$round_num[i] = 1
+     } else if (challengers_pm[r,1] == atp$tourney_name[i] & atp$round[i] == "R32"){
+        atp$prize_money[i] = challengers_pm[r,which(names(challengers_pm) == "Round 1")]
+        atp$round_num[i] = 0
+     }
+  }
+}
+
+for (i in 1:nrow(atp)){
+  for (r in 1:nrow(pm_250)){
+    if(pm_250[r,1] == atp$tourney_name[i] & atp$round[i] == "F") {
+        atp$prize_money[i] = pm_250[r,which(names(pm_250) == "Runner Up")]
+        atp$round_num[i] = 4
+     } else if (pm_250[r,1] == atp$tourney_name[i] & atp$round[i] == "SF"){
+        atp$prize_money[i] = pm_250[r,which(names(pm_250) == "Semi Final")]
+        atp$round_num[i] = 3
+     } else if (pm_250[r,1] == atp$tourney_name[i] & atp$round[i] == "QF"){
+        atp$prize_money[i] = pm_250[r,which(names(pm_250) == "Quarter Final")]
+        atp$round_num[i] = 2
+     } else if (pm_250[r,1] == atp$tourney_name[i] & atp$round[i] == "R16"){
+        atp$prize_money[i] = pm_250[r,which(names(pm_250) == "Round 2")]
+        atp$round_num[i] = 1
+     } else if (pm_250[r,1] == atp$tourney_name[i] & atp$round[i] == "R32"){
+        atp$prize_money[i] = pm_250[r,which(names(pm_250) == "Round 1")]
+        atp$round_num[i] = 0
+     }
+  }
+}
+
+for (i in 1:nrow(atp)){
+  for (r in 1:nrow(special_pm)){
+    if(special_pm[r,1] == atp$tourney_name[i] & atp$round[i] == "F") {
+        atp$prize_money[i] = special_pm[r,which(names(special_pm) == "Runner-up")]
+        atp$round_num[i] = 5
+     } else if (special_pm[r,1] == atp$tourney_name[i] & atp$round[i] == "SF"){
+        atp$prize_money[i] = special_pm[r,which(names(special_pm) == "Semifinal")]
+        atp$round_num[i] = 4
+     } else if (special_pm[r,1] == atp$tourney_name[i] & atp$round[i] == "QF"){
+        atp$prize_money[i] = special_pm[r,which(names(special_pm) == "Quarterfinal")]
+        atp$round_num[i] = 3
+     } else if (special_pm[r,1] == atp$tourney_name[i] & atp$round[i] == "R16"){
+        atp$prize_money[i] = special_pm[r,which(names(special_pm) == "Round 3")]
+        atp$round_num[i] = 2
+     } else if (special_pm[r,1] == atp$tourney_name[i] & atp$round[i] == "R32"){
+        atp$prize_money[i] = special_pm[r,which(names(special_pm) == "Round 2")]
+        atp$round_num[i] = 1
+     } else if (special_pm[r,1] == atp$tourney_name[i] & atp$round[i] == "R64"){
+        atp$prize_money[i] = special_pm[r,which(names(special_pm) == "Round 1")]
+        atp$round_num[i] = 0
+     }
+  }
+}
+
+```
+Prediction Dataset (converting matches to per player basis to establish a win/lose result for those at a particular rank) -- with help from Martin Barron
+```{r}
+win_cols <- c(grep("winner", names(atp)), grep("w_", names(atp)))
+lose_cols <- c(grep("loser", names(atp)), grep("l_", names(atp)))
+
+id_cols <- atp[, c(1:7,30,62,63)]
+
+lose_data <- atp[, lose_cols]
+win_data <- atp[, win_cols]
+
+
+win_data <- win_data[, -11]
+head(lose_data)
+head(win_data)
+
+names(lose_data)
+names(win_data)
+
+
+
+names(win_data)  <- c("id", "seed", "entry", "name", "hand", "ht", "ioc", "age",
+                 "rank", "rank_points", "ace", "df", "svpt", "1stIn", "1stWon",
+                 "2ndWon", "SvGms", "bpSaved", "bpFaced", "2ndIn", "1st_ser_per",  "1st_serve_Won_per", "2nd_serve_Won_per", "bp_won_per", "bp")
+
+names(lose_data)  <- c("id", "seed", "entry", "name", "hand", "ht", "ioc", "age",
+                      "rank", "rank_points", "ace", "df", "svpt", "1stIn", "1stWon",
+                      "2ndWon", "SvGms", "bpSaved", "bpFaced", "2ndIn", "1st_ser_per", "1st_serve_Won_per", "2nd_serve_Won_per", "bp_won_per", "bp")
+
+lose_data_1 <- lose_data
+win_data_1 <- win_data
+
+names(lose_data_1) <- paste(names(lose_data_1), "_opp")
+names(win_data_1) <- paste(names(win_data_1), "_opp")
+
+match_db_1 <- cbind.data.frame(id_cols, win_data, lose_data_1)
+match_db_2 <- cbind.data.frame(id_cols, lose_data, win_data_1)
+
+match_db_1$result <- 1
+match_db_2$result <- 0
+
+fdata <- rbind.data.frame(match_db_1, match_db_2)
+```
+# Creating champion prize money dataframe for comparisons to other tournaments
+```{r}
+dfs = list(gs_pm, masters_pm, atp_500_96pm, atp_500_64pm, pm_250, challengers_pm, special_pm)
+champ_pm = reduce(dfs, full_join, by = "Tournament")
+champ_pm <- champ_pm |>
+  mutate(winner = coalesce(Winner, Winner.x, Winner.y, Winner.x.x, Winner.y.y, Winner.x.x.x, Winner.y.y.y))
+
+champ_pm <- select(champ_pm, Tournament, winner)
+summary(champ_pm)
+```
+Compiling player summary profiles:
+```{r}
+fdata[is.na(as.matrix(fdata))] <- 0
+
+player_name = c(unique(fdata$name))
+
+summary_stats = tibble()
+
+for (player in player_name){
+  filter_fdata <- fdata |> subset(name == player)
+  new_row = tibble(name = player, ace = mean(filter_fdata$ace), df = mean(filter_fdata$df), serve_percentage_1st = mean(filter_fdata$`1st_ser_per`), won_1st_serve_percentage = mean(filter_fdata$`1st_serve_Won_per`), won_2nd_serve_percentage = mean(filter_fdata$`2nd_serve_Won_per`), bp_won_percentage = mean(filter_fdata$bp_won_per), matches_played = nrow(filter_fdata))
+  summary_stats = bind_rows(summary_stats, new_row)
+}
+```
+
+### Viz Creation
+
+1) Creating the visual to determine which players had the most success at the lower level tournaments. The goal of this viz is to find the players that had the highest success to determine further out what their rank was and what tournaments they did that led to their success (this could mean that a lower ranked player had more success at a particular tournament than others and thus resulted in better results by coming in as the underdog)
+```{r}
+success_lower <- fdata |>
+  filter(rank > 250 & entry %in% c("LL", "Q") & bp_won_per != 100 & bp_won_per != 0)
+
+ll <- ggplot(data = success_lower, # Set dataset
+                 aes(x = `1st_serve_Won_per`, # Set x-axis variable
+                     y = bp_won_per,
+                     color = as.factor(result))) + # Set y-axis variable
+  geom_point() + # Set geom point to create scatter plot
+  geom_text_repel(aes(label = name), max.overlaps = 10) + # Label points
+  labs(x = "1st Serve %", # Add labels
+       y = "Winner Break Points Won %",
+       title = "1st Serve % vs. Break Points Won %",
+       subtitle = "2000-2017 @ Lower Level Tournaments") +
+  dark_theme_bw()
+
+ll
+```
+# Prize Money by tournament
+```{r}
+
+```
+
+
+
+```{r}
+win_loss_determine <- glm(result ~ ., data = fdata[, c(3, 12, 15:32, 34, 37, 40:58)])
+summary(win_loss_determine)
+```
+
+
+```{r}
+inners = data.frame(id = 1:43)
+nets = data.frame(id = 1:37)
+outs = data.frame(id = 1:49)
+
+inners$x = NA
+inners$y = NA
+  
+nets$x = NA
+nets$y = NA
+
+outs$x = NA
+outs$y = NA
+
+nn = 1
+ne = 1
+ou = 1
+
+for (i in 1:length(points$reason)){
+    if (points$reason[i] == "winner") {
+      inners$x[nn] <- points$x[i] 
+      inners$y[nn] <- points$y[i]
+      nn = nn + 1
+    } else if (points$reason[i] == "net") {
+      nets$x[ne] <- points$x[i] 
+      nets$y[ne] <- points$y[i]
+      ne = ne + 1
+    } else if (points$reason[i] == "out") {
+      outs$x[ou] <- points$x[i] 
+      outs$y[ou] <- points$y[i]
+      ou = ou + 1
+    } else {
+      next
+    }
+}
+
+```
+
+Placement of the winners, nets, and outs
+
+- This is breaking down visually where balls generally ended for both Nadal and Djokovic. This area of the game can be used to explain where the biggest success can come from for a player looking to generate more success.
+```{r}
+# Load the ggplot2 library
+library(ggplot2)
+
+# Define court dimensions in meters
+court_length <- 23.77
+court_width <- 10.97
+singles_width <- 8.23
+service_box_length <- 6.4
+service_box_width <- 4.115
+
+# Create the court plot
+ggplot() +
+  # Outer court boundary
+  geom_rect(aes(xmin = -10, xmax = court_width+10, ymin = -10, ymax = court_length+10), color = "black", fill = NA, size = 1) +
+  
+  # Singles court boundary
+  geom_rect(aes(xmin = (court_width - singles_width) / 2,
+                xmax = (court_width + singles_width) / 2,
+                ymin = 0, ymax = court_length), color = "blue", fill = NA, size = 0.8) +
+  
+  # Net line
+  geom_segment(aes(x = 0, y = court_length / 2, xend = court_width, yend = court_length / 2), color = "black", size = 1.2) +
+  
+  # Service boxes
+  geom_rect(aes(xmin = (court_width - singles_width) / 2,
+                xmax = (court_width + singles_width) / 2,
+                ymin = court_length / 2 - service_box_length,
+                ymax = court_length / 2), color = "black", fill = NA, size = 0.8) +
+  geom_rect(aes(xmin = (court_width - singles_width) / 2,
+                xmax = (court_width + singles_width) / 2,
+                ymin = court_length / 2,
+                ymax = court_length / 2 + service_box_length), color = "black", fill = NA, size = 0.8) +
+  
+  # Center service line
+  geom_segment(aes(x = court_width / 2, y = court_length / 2 - service_box_length, xend = court_width / 2, yend = court_length / 2 + service_box_length),
+               color = "black", size = 0.8) +
+  
+  # Baselines (end lines)
+  geom_segment(aes(x = (court_width - singles_width) / 2, y = 0, xend = (court_width + singles_width) / 2, yend = 0), color = "black", size = 0.8) +
+  geom_segment(aes(x = (court_width - singles_width) / 2, y = court_length, xend = (court_width + singles_width) / 2, yend = court_length), color = "black", size = 0.8) +
+
+  # Mark the winner shot point
+  geom_point(aes(x = inners$x, y = inners$y), color = "green", size = 3) +
+  
+  # Mark the shots in the net
+  geom_point(aes(x = nets$x, y = nets$y), color = "blue", size = 3) +
+  
+  # Mark the shots called "out"
+  geom_point(aes(x = outs$x, y = outs$y), color = "red", size = 3) +
+  
+  # Add title and labels
+  labs(title = "Tennis Court with Winner Shot",
+       x = "Court Width (m)",
+       y = "Court Length (m)") +
+  
+  # Set aspect ratio and limits to ensure the court is proportional
+  coord_fixed(ratio = court_length / court_width) +
+  xlim(-2, court_width) +
+  ylim(-6.5, court_length) +
+  theme_minimal()
+
+
+```
+Serve Placement
+- Again, similar to the previous viz, this is meant to create a deeper look in to the breakdown of the serves that both players exhibited to the match (where exactly are they both serving that led to the most success). The beautiful part about this data is that these can both be utilized for left and right handed players, including a fraction of the population and giving them a better idea as to how to find success.
+```{r}
+# Load ggplot2 library
+library(ggplot2)
+
+# Define dimensions for service boxes
+service_box_length <- 6.4   # Distance from net to service line (meters)
+service_box_width <- 4.115  # Width of each service box (meters)
+singles_width <- 8.23       # Singles court width (for positioning)
+
+# Define example serve coordinates within the service boxes
+# Left service box serve example
+
+# Plot only the service boxes
+ggplot() +
+  # Left service box (closer to the net)
+  geom_rect(aes(xmin = 0, xmax = service_box_width, ymin = 0, ymax = service_box_length), 
+            color = "black", fill = "lightgray", size = 1) +
+  
+  # Right service box (closer to the net)
+  geom_rect(aes(xmin = singles_width+5 - service_box_width, xmax = singles_width+5, ymin = 0, ymax = service_box_length), 
+            color = "black", fill = "lightgray", size = 1) +
+  
+  # Plot serve points
+  
+  geom_point(data = serves, aes(x = y, y = x), color = "blue", size = 3) +
+  
+  # Labels and theme adjustments
+  labs(title = "Tennis Court Service Boxes with Serve Points",
+       x = "Court Width (m)",
+       y = "Court Length (m)") +
+  
+  # Set aspect ratio for proportional display
+  coord_fixed() +
+  theme_minimal()
+
+```
+
+This is a simple viz in breaking down the most tournaments by level. As seen, lower tier tournaments are more frequent than others. The deeper analysis needs to come in where lower ranked players have found the most success and what stats truly correlated to wins and losses on the court for a particular player. There are many stats to chose from, but there are some that are more significant than others.
+```{r}
+ll <-  ggplot(atp_00, aes(x = atp_00$tourney_level)) +
+  geom_bar(fill = "steelblue") +
+  labs(title = "Count of How many tournaments there are",
+       x = "Categories",
+       y = "Frequency")
+ll
+```
+
+If there's a certain player in the draw, should we avoid or no? These players are at a certain lower rank and can have strong service games, but not a strong return game. Let's find the players who 
+give us the best chance at a particular part in their game.
+
+```{r}
+summary(fdata)
+```
+
+
+```{r}
+lower_level <- fdata |>
+  filter(rank > 249 & `bp_won_per _opp` < 40 & `2nd_serve_Won_per` > 50 & `1st_ser_per` > 70)
+  
+avoid <- ggplot(data = lower_level,
+                 aes(x = `2nd_serve_Won_per`, # Set x-axis variable
+                     y = `bp_won_per _opp`)) +
+  geom_point() +
+  geom_smooth(color = "blue") +
+  geom_text_repel(aes(label = name)) +
+  labs(title = "Who we should avoid?",
+       x = "2nd serve win %",
+       y = "Opponent Break Points Won %") +
+  theme_minimal() +
+  dark_theme_bw() + # Set dark theme
+  geom_hline(yintercept = 25) + 
+  geom_vline(xintercept = 60)
+
+avoid
+```
+Crafting a clustering model - what players have been successful with using
+```{r}
+clustering_columns = c("age","rank","rank_points","ace","df","svpt","1stIn","1stWon","2ndWon","SvGms","bpSaved","bpFaced","2ndIn","1st_ser_per","1st_serve_Won_per","2nd_serve_Won_per",
+"bp_won_per","age _opp","rank _opp","rank_points _opp","ace _opp","df _opp","svpt _opp"   ,"1stIn _opp","1stWon _opp","2ndWon _opp","SvGms _opp","bpSaved _opp","bpFaced _opp","2ndIn _opp",
+"1st_ser_per _opp","1st_serve_Won_per _opp","2nd_serve_Won_per _opp", "bp_won_per _opp")
+# Extract just columns for clustering
+clus_data <- fdata[,clustering_columns]
+# Set row names on data set
+
+sdata <- scale(clus_data)
+
+rownames(sdata) <- paste(fdata$name, c(1:nrow(sdata)), sep = "-")
+
+subset_fdata <- sdata[sample(nrow(sdata), size = 0.1 * nrow(sdata)), ]
+dist_mat <- dist(subset_fdata, # Set data set
+                 method = "euclidean") # Set distance measure to use
+
+hc <- hclust(dist_mat, # Set distance matrix to use 
+              method = "ward.D2" ) # Set linkage measure to use
+```
+
+
+```{r}
+
+dend <- as.dendrogram(hc)
+# order it the closest we can to the order of the observations:
+dend <- rotate(dend, 1:nrow(subset_fdata))
+
+# Color the branches based on the clusters:
+dend <- color_branches(dend, k=8) 
+
+# We hang the dendrogram a bit:
+dend <- hang.dendrogram(dend,hang_height=0.1)
+# reduce the size of the labels:
+dend <- set(dend, "labels_cex", 0.55)
+# And plot:
+par(mar = c(3,3,3,7))
+plot(dend, 
+     main = "Clustered ATP Players",
+     horiz =  TRUE,  nodePar = list(cex = .007))
+```
+```{r}
+sum(is.na(subset_fdata))
+subset_fdata[is.na(as.matrix(subset_fdata))] <- 0
+set.seed(12345) # Set seed for reproducibility
+fit <- kmeans(x = subset_fdata, # Set data as explanatory variables 
+                centers = 8,  # Set number of clusters
+                nstart = 25, # Set number of starts
+                iter.max = 100 ) # Set maximum number of iterations to use
+```
+
+```{r}
+# Extract clusters
+clusters <- fit$cluster
+# Extract centers
+centers <- fit$centers
+
+# Create cluster vector
+cluster <- c(1:8)
+# Join cluster vector and centers
+center_df <- data.frame(cluster, centers)
+
+# Reshape the data
+center_reshape <- gather(center_df, features, values, age:bp_won_per._opp)
+# View result
+head(center_reshape)
+
+# Re-level factors
+center_reshape$features <- factor(center_reshape$features, levels = c("age","rank","rank_points","ace","df","svpt","X1stIn","X1stWon","X2ndWon","SvGms","bpSaved","bpFaced","X2ndIn","X1st_ser_per","X1st_serve_Won_per","X2nd_serve_Won_per",
+"bp_won_per","age._opp","rank._opp","rank_points._opp","ace._opp","df._opp","svpt._opp"   ,"X1stIn._opp","X1stWon._opp","X2ndWon._opp","SvGms._opp","bpSaved._opp","bpFaced._opp","X2ndIn._opp",
+"X1st_ser_per._opp","X1st_serve_Won_per._opp","X2nd_serve_Won_per._opp", "bp_won_per._opp"))
+```
+
+```{r}
+g_heat_2 <- ggplot(data = center_reshape, # Set data set
+                   aes(x = features, y = cluster, fill = values)) + # Set aesthetics
+  scale_y_continuous(breaks = seq(1, 8, by = 1)) + # Set y axis breaks
+  geom_tile() + # Set geom tile for heat map
+  coord_equal() +  # Set coord equal 
+  theme_bw() + # Set theme
+  scale_fill_gradient2(low = "blue", # Choose low color
+                       mid = "white", # Choose mid color
+                       high = "red", # Choose high color
+                       midpoint =0, # Choose mid point
+                       space = "Lab", 
+                       na.value ="grey", # Choose NA value
+                       guide = "colourbar", # Set color bar
+                       aesthetics = "fill") + # Select aesthetics to apply
+  coord_flip() # Rotate plot
+g_heat_2
+```
+
+
+
+
+Crafting the prediction model - xgboost
+```{r}
+set.seed(7924813)  # Set seed for reproducibility
+
+total_size <- nrow(fdata)
+train_size <- floor(0.6 * total_size)
+valid_size <- floor(0.2 * total_size)
+test_size <- total_size - train_size - valid_size
+
+# Create indices for the splits
+train_index <- sample(x = 1:total_size, size = train_size, replace = FALSE)
+valid_index <- sample(setdiff(1:total_size, train_index), size = valid_size, replace = FALSE)
+test_index <- sample(setdiff(1:total_size, c(train_index, valid_index)), size = test_size, replace = FALSE)
+
+# Create the train, validation, and test datasets
+train_data <- fdata[train_index, ]
+valid_data <- fdata[valid_index, ]
+test_data <- fdata[test_index, ]
+```
+
+
+```{r}
+dtrain <- xgb.DMatrix(data = as.matrix(train_data[, c(15:33, 40:57)]), label = as.numeric(train_data$result)) # 15-33 age - bp
+
+dtest <- xgb.DMatrix(data = as.matrix(test_data[, c(15:33, 40:57)]), label = as.numeric(test_data$result))
+
+set.seed(57124)
+bst_1 <- xgboost(data = dtrain, # Set training data
+               
+               nrounds = 100, # Set number of rounds
+               nfold = 5, # Use 5 fold cross-validation
+               
+               max_depth = 4,
+               eta = 0.01, # Set learning rate
+               verbose = 1, # 1 - Prints out fit
+               nthread = 1, # Set number of parallel threads
+               print_every_n = 20, # Prints out result every 20th iteration
+               early_stopping_rounds = 50,
+               lambda = 1,  # L2 regularization
+               alpha = 1,    # L1 regularization
+               colsample_bytree = 0.8,
+               
+               objective = "binary:logistic", # Set objective
+               eval_metric = "auc",
+               eval_metric = "error") # Set evaluation metric to use
+
+boost_preds_1 <- predict(bst_1, dtest) # Create predictions for xgboost model
+
+pred_dat <- cbind.data.frame(boost_preds_1 , test_data$result)#
+# Convert predictions to classes, using optimal cut-off
+boost_pred_class <- rep(0, length(boost_preds_1))
+boost_pred_class[boost_preds_1 >= 0.5] <- 1
+
+
+t <- table(boost_pred_class, test_data$result) # Create table
+confusionMatrix(t, positive = "1") # Produce confusion matrix
+
+```
+Variable importance in the xgboost model
+```{r}
+# Extract importance
+imp_mat <- xgb.importance(model = bst_1)
+# Plot importance (top 10 variables)
+xgb.plot.importance(imp_mat, top_n = 10)
+```
+```{r}
+x_vars <- model.matrix(result ~., data = train_data[, c(15:33, 40:58)])[,-1]
+
+model_features <- bst_1$feature_names
+data_features <- colnames(x_vars)
+
+# Identify differences
+setdiff(model_features, data_features) # Features in the model but not in X_train
+setdiff(data_features, model_features) 
+
+colnames(x_vars) <- gsub("`", "", colnames(x_vars))
+
+shap_result <- shap.score.rank(xgb_model = bst_1, 
+                X_train =x_vars,
+                shap_approx = F)
+
+shap_long = shap.prep(shap = shap_result,
+                           X_train = x_vars, 
+                           top_n = 10)
+
+
+plot.shap.summary(data_long = shap_long)
+```
+
+
+Xgboost model and tesitng different etas and tree sizes:
+
+```{r}
+# Use xgb.cv to run cross-validation inside xgboost
+set.seed(111111)
+bst_mod_1 <- xgb.cv(data = dtrain, # Set training data
+              
+              nfold = 5, # Use 5 fold cross-validation
+               
+              eta = 0.3, # Set learning rate
+              max.depth = 7, # Set max depth
+              min_child_weight = 10, # Set minimum number of samples in node to split
+              gamma = 0, # Set minimum loss reduction for split
+              subsample = 0.9, # Set proportion of training data to use in tree
+              colsample_bytree =  0.9, # Set number of variables to use in each tree
+               
+              nrounds = 1000, # Set number of rounds
+              early_stopping_rounds = 20, # Set number of rounds to stop at if there is no improvement
+               
+              verbose = 1, # 1 - Prints out fit
+              nthread = 1, # Set number of parallel threads
+              print_every_n = 20, # Prints out result every 20th iteration
+              
+              objective = "binary:logistic", # Set objective
+              eval_metric = "auc",
+              eval_metric = "error") # Set evaluation metric to use
+
+set.seed(111111)
+bst_mod_2 <- xgb.cv(data = dtrain, # Set training data
+              
+              nfold = 5, # Use 5 fold cross-validation
+               
+              eta = 0.1, # Set learning rate
+              max.depth =  7, # Set max depth
+              min_child_weight = 10, # Set minimum number of samples in node to split
+              gamma = 0, # Set minimum loss reduction for split
+              subsample = 0.9 , # Set proportion of training data to use in tree
+              colsample_bytree = 0.9, # Set number of variables to use in each tree
+               
+              nrounds = 1000, # Set number of rounds
+              early_stopping_rounds = 20, # Set number of rounds to stop at if there is no improvement
+               
+              verbose = 1, # 1 - Prints out fit
+              nthread = 1, # Set number of parallel threads
+              print_every_n = 20, # Prints out result every 20th iteration
+              
+              objective = "binary:logistic", # Set objective
+              eval_metric = "auc",
+              eval_metric = "error") # Set evaluation metric to use
+
+set.seed(111111)
+bst_mod_3 <- xgb.cv(data = dtrain, # Set training data
+              
+              nfold = 5, # Use 5 fold cross-validation
+               
+              eta = 0.05, # Set learning rate
+              max.depth = 7, # Set max depth
+              min_child_weight = 10 , # Set minimum number of samples in node to split
+              gamma = 0, # Set minimum loss reduction for split
+              subsample = 0.9 , # Set proportion of training data to use in tree
+              colsample_bytree =  0.9, # Set number of variables to use in each tree
+               
+              nrounds = 1000, # Set number of rounds
+              early_stopping_rounds = 20, # Set number of rounds to stop at if there is no improvement
+               
+              verbose = 1, # 1 - Prints out fit
+              nthread = 1, # Set number of parallel threads
+              print_every_n = 20, # Prints out result every 20th iteration
+              
+              objective = "binary:logistic", # Set objective
+              eval_metric = "auc",
+              eval_metric = "error") # Set evaluation metric to use
+
+set.seed(111111)
+bst_mod_4 <- xgb.cv(data = dtrain, # Set training data
+              
+              nfold = 5, # Use 5 fold cross-validation
+               
+              eta = 0.01, # Set learning rate
+              max.depth = 7, # Set max depth
+              min_child_weight = 10, # Set minimum number of samples in node to split
+              gamma = 0.1, # Set minimum loss reduction for split
+              subsample = 0.9 , # Set proportion of training data to use in tree
+              colsample_bytree = 0.9, # Set number of variables to use in each tree
+               
+              nrounds = 1000, # Set number of rounds
+              early_stopping_rounds = 20, # Set number of rounds to stop at if there is no improvement
+               
+              verbose = 1, # 1 - Prints out fit
+              nthread = 1, # Set number of parallel threads
+              print_every_n = 20, # Prints out result every 20th iteration
+              
+              objective = "binary:logistic", # Set objective
+              eval_metric = "auc",
+              eval_metric = "error") # Set evaluation metric to use
+
+set.seed(111111)
+bst_mod_5 <- xgb.cv(data = dtrain, # Set training data
+              
+              nfold = 5, # Use 5 fold cross-validation
+               
+              eta = 0.005, # Set learning rate
+              max.depth = 7, # Set max depth
+              min_child_weight = 10, # Set minimum number of samples in node to split
+              gamma = 0, # Set minimum loss reduction for split
+              subsample = 0.9 , # Set proportion of training data to use in tree
+              colsample_bytree = 0.9, # Set number of variables to use in each tree
+               
+              nrounds = 1000, # Set number of rounds
+              early_stopping_rounds = 20, # Set number of rounds to stop at if there is no improvement
+               
+              verbose = 1, # 1 - Prints out fit
+              nthread = 1, # Set number of parallel threads
+              print_every_n = 20, # Prints out result every 20th iteration
+               
+              objective = "binary:logistic", # Set objective
+              eval_metric = "auc",
+              eval_metric = "error") # Set evaluation metric to use
+```
+
+```{r}
+# Extract results for model with eta = 0.3
+pd1 <- cbind.data.frame(bst_mod_1$evaluation_log[,c("iter", "test_error_mean")], rep(0.3, nrow(bst_mod_1$evaluation_log)))
+names(pd1)[3] <- "eta"
+# Extract results for model with eta = 0.1
+pd2 <- cbind.data.frame(bst_mod_2$evaluation_log[,c("iter", "test_error_mean")], rep(0.1, nrow(bst_mod_2$evaluation_log)))
+names(pd2)[3] <- "eta"
+# Extract results for model with eta = 0.05
+pd3 <- cbind.data.frame(bst_mod_3$evaluation_log[,c("iter", "test_error_mean")], rep(0.05, nrow(bst_mod_3$evaluation_log)))
+names(pd3)[3] <- "eta"
+# Extract results for model with eta = 0.01
+pd4 <- cbind.data.frame(bst_mod_4$evaluation_log[,c("iter", "test_error_mean")], rep(0.01, nrow(bst_mod_4$evaluation_log)))
+names(pd4)[3] <- "eta"
+# Extract results for model with eta = 0.005
+pd5 <- cbind.data.frame(bst_mod_5$evaluation_log[,c("iter", "test_error_mean")], rep(0.005, nrow(bst_mod_5$evaluation_log)))
+names(pd5)[3] <- "eta"
+# Join datasets
+plot_data <- rbind.data.frame(pd1, pd2, pd3, pd4, pd5)
+# Converty ETA to factor
+plot_data$eta <- as.factor(plot_data$eta)
+# Plot points
+g_6 <- ggplot(plot_data, aes(x = iter, y = test_error_mean, color = eta))+
+  geom_point(alpha = 0.5) +
+  theme_bw() + # Set theme
+  theme(panel.grid.major = element_blank(), # Remove grid
+        panel.grid.minor = element_blank(), # Remove grid
+        panel.border = element_blank(), # Remove grid
+        panel.background = element_blank()) + # Remove grid 
+  labs(x = "Number of Trees", title = "Error Rate v Number of Trees",
+       y = "Error Rate", color = "Learning \n Rate")  # Set labels
+g_6
+```
+
+```{r}
+g_7 <- ggplot(plot_data, aes(x = iter, y = test_error_mean, color = eta))+
+  geom_smooth(alpha = 0.5) +
+  theme_bw() + # Set theme
+  theme(panel.grid.major = element_blank(), # Remove grid
+        panel.grid.minor = element_blank(), # Remove grid
+        panel.border = element_blank(), # Remove grid
+        panel.background = element_blank()) + # Remove grid 
+  labs(x = "Number of Trees", title = "Error Rate v Number of Trees",
+       y = "Error Rate", color = "Learning \n Rate")  # Set labels
+g_7
+```
+Optimal ETA: 0.1
+```{r}
+set.seed(111111)
+bst_final <- xgboost(data = dtrain, # Set training data
+              
+        
+               
+              eta = 0.1, # Set learning rate
+              max.depth =  7, # Set max depth
+              min_child_weight = 10, # Set minimum number of samples in node to split
+              gamma = 0, # Set minimum loss reduction for split
+              subsample =  0.9, # Set proportion of training data to use in tree
+              colsample_bytree = 0.9, # Set number of variables to use in each tree
+               
+              nrounds = 100, # Set number of rounds
+              early_stopping_rounds = 20, # Set number of rounds to stop at if there is no improvement
+               
+              verbose = 1, # 1 - Prints out fit
+              nthread = 1, # Set number of parallel threads
+              print_every_n = 20, # Prints out result every 20th iteration
+              
+              objective = "binary:logistic", # Set objective
+              eval_metric = "auc",
+              eval_metric = "error") # Set evaluation metric to use
+```
+```{r}
+boost_preds <- predict(bst_final, dtest) # Create predictions for XGBoost model
+
+pred_dat <- cbind.data.frame(boost_preds , test_data$result)#
+# Convert predictions to classes, using optimal cut-off
+boost_pred_class <- rep(0, length(boost_preds))
+boost_pred_class[boost_preds >= 0.5] <- 1
+
+
+t <- table(boost_pred_class, test_data$result) # Create table
+confusionMatrix(t, positive = "1") # Produce confusion matrix
+```
+```{r}
+statistical_pred_model = glm(result ~ round + rank_points + rank + `1st_serve_Won_per` + `1st_serve_Won_per _opp` + `2nd_serve_Won_per` + `2nd_serve_Won_per _opp` + bp_won_per + `bp_won_per _opp`, data = fdata)
+summary(statistical_pred_model)
+```
+Predicting the round a player will be in
+```{r}
+train_data[is.na(as.matrix(train_data))] <- 0
+test_data[is.na(as.matrix(test_data))] <- 0
+dtrain2 <- xgb.DMatrix(data = as.matrix(train_data[, c( 18:34, 43:60)]), label = as.numeric(train_data$round_num)) # 15-33 age - bp
+
+dtest2 <- xgb.DMatrix(data = as.matrix(test_data[, c( 18:34, 43:60)]), label = as.numeric(test_data$round_num))
+```
+
+```{r}
+set.seed(57124)
+bst_2 <- xgboost(data = dtrain2, # Set training data
+               
+               nrounds = 200, # Set number of rounds
+               
+               max_depth = 9,
+               eta = 0.05, # Set learning rate
+               verbose = 1, # 1 - Prints out fit
+               nthread = 1, # Set number of parallel threads
+               print_every_n = 20, # Prints out result every 20th iteration
+               early_stopping_rounds = 50,
+               lambda = 1,  # L2 regularization
+               alpha = 1,    # L1 regularization
+               colsample_bytree = 0.8,
+               num_class = 7,
+               eval_metric = "merror",
+               
+               objective = "multi:softmax") # Set evaluation metric to use
+
+boost_preds_2 <- predict(bst_2, dtest2) # Create predictions for xgboost model
+
+pred_dat2 <- cbind.data.frame(boost_preds_2 , test_data$round_num)#
+# Convert predictions to classes, using optimal cut-off
+boost_preds_class <- round(boost_preds_2)
+
+###############################
+t2 <- table(boost_preds_class, test_data$round_num) # Create table
+confusionMatrix(t2, positive = "1") # Produce confusion matrix
+
+
+```
+```{r}
+player_input = data.frame(age = NA, rank = NA, rank_points = NA, ace = NA, df = NA, svpt = NA, `1stIn` = NA, `1stWon` = NA, `2ndWon` = NA, SvGms = NA, bpSaved = NA, bpFaced = NA, `2ndIn` = NA, `1st_ser_per` = NA, `1st_serve_Won_per` = NA, `2nd_serve_Won_per` = NA, bp_won_per = NA)
+
+dtrain4 <- xgb.DMatrix(data = as.matrix(train_data[, c( 18:34, 43:60)]), label = as.numeric(train_data$round_num)) # 15-33 age - bp
+
+dtest4 <- xgb.DMatrix(data = as.matrix(test_data[, c( 18:34, 43:60)]), label = as.numeric(test_data$round_num))
+```
+
+```{r}
+name_1 <- "Roger Federer"
+tournament <- "Atlanta"
+
+
+
+temp <- cbind.data.frame(fdata[which(fdata$name == name_1 & sum(fdata$tourney_name == tournament)),c(18:34)])
+dtest_new <- xgb.DMatrix(data = as.matrix(temp))
+
+predict(bst_2, dtest_new)
+```
+, fdata[which(fdata$name == name_2 & sum(fdata$tourney_name == tournament)), c(43:60)])
+
+```{r}
+set.seed(57124)
+bst_4 <- xgboost(data = dtrain4, # Set training data
+               
+               nrounds = 200, # Set number of rounds
+               
+               max_depth = 9,
+               eta = 0.05, # Set learning rate
+               verbose = 1, # 1 - Prints out fit
+               nthread = 1, # Set number of parallel threads
+               print_every_n = 20, # Prints out result every 20th iteration
+               early_stopping_rounds = 50,
+               lambda = 1,  # L2 regularization
+               alpha = 1,    # L1 regularization
+               colsample_bytree = 0.8,
+               num_class = 7,
+               eval_metric = "merror",
+               
+               objective = "multi:softmax") # Set evaluation metric to use
+
+boost_preds_4 <- predict(bst_4, dtest4) # Create predictions for xgboost model
+
+pred_dat4 <- cbind.data.frame(boost_preds_4 , test_data$round_num)#
+# Convert predictions to classes, using optimal cut-off
+boost_preds_class4 <- round(boost_preds_4)
+
+###############################
+t4 <- table(boost_preds_class4, test_data$round_num) # Create table
+confusionMatrix(t4, positive = "1") # Produce confusion matrix
+```
+
+
+Can we make an interactive model where the player puts in their name and tournament they are considering and it can give the predicted round, which will give the amount of the prize money they receive by giving the predicted round?
+
+# Which tournaments are favorable for the LL and Q round players?
+
+```{r}
+success_lower <- fdata |>
+  filter(rank > 150 & entry %in% c("LL", "Q") & bp_won_per != 100 & bp_won_per != 0 & result == 1 & !tourney_name %in% c("Wimbledon", "US Open", "Roland Garros", "Australian Open"))
+
+sl <- ggplot(data = success_lower, # Set dataset
+                 aes(x = round, # Set x-axis variable
+                     y = prize_money,
+                     color = surface)) + # Set y-axis variable
+  geom_point(position = position_dodge(0.8)) + # Set geom point to create scatter plot
+  geom_text_repel(aes(label = tourney_name), max.overlaps = 10) + # Label points
+  scale_x_discrete(limits = c("R64", "R32", "R16", "QF", "SF", "F")) +
+  labs(x = "Round", # Add labels
+       y = "Prize Money",
+       title = "How far did the lower ranked players get in tournaments",
+       subtitle = "Are there tournaments we should favor over others as LL or Q") +
+  dark_theme_bw()
+
+sl
+```
+
+
+# Predicting if they can get into a Major
+
+Creating the result variable of whether the player can get into the tournament
+```{r}
+aussy <- fdata |>
+  subset(fdata$tourney_name == "Australian Open")
+
+us_op <- fdata |>
+  subset(fdata$tourney_name == "US Open")
+
+ro_ga <- fdata |>
+  subset(fdata$tourney_name == "Roland Garros")
+
+wimby <- fdata |>
+  subset(fdata$tourney_name == "Wimbledon")
+
+
+aussy <- aussy[order(-aussy$rank_points), ]
+us_op <- us_op[order(-us_op$rank_points), ]
+ro_ga <- ro_ga[order(-ro_ga$rank_points), ]
+wimby <- wimby[order(-wimby$rank_points), ]
+
+entry_wim = wimby[.75*nrow(wimby),19]
+entry_us = us_op[.75*nrow(us_op),19]
+entry_rg = ro_ga[.75*nrow(ro_ga),19]
+entry_aus = aussy[.75*nrow(aussy),19]
+
+entryAvg = mean(c(entry_wim, entry_us, entry_rg, entry_aus))
+```
+
+```{r}
+for (i in 1:nrow(fdata)){
+  if (is.na(fdata[i,19])) { 
+    next
+  } else if (fdata[i,19] > entryAvg) {
+    fdata$entry_result[i] = 1
+  } else {
+    fdata$entry_result[i] = 0
+  }
+}
+```
+
+
+```{r}
+dtrain3 <- xgb.DMatrix(data = as.matrix(train_data[, c(18,19)]), label = as.numeric(train_data$entry_result)) # 15-33 age - bp
+
+dtest3 <- xgb.DMatrix(data = as.matrix(test_data[, c(18,19)]), label = as.numeric(test_data$entry_result))
+
+set.seed(57124)
+bst_3 <- xgboost(data = dtrain3, # Set training data
+               
+               nrounds = 200, # Set number of rounds
+               nfold = 10, # Use 5 fold cross-validation
+               
+               max_depth = 10,
+               eta = 0.01, # Set learning rate
+               verbose = 1, # 1 - Prints out fit
+               nthread = 3, # Set number of parallel threads
+               print_every_n = 20, # Prints out result every 20th iteration
+               #early_stopping_rounds = 100,
+               lambda = 1,  # L2 regularization
+               alpha = 1,    # L1 regularization
+               colsample_bytree = 0.8,
+               objective = "binary:logistic", # Set objective
+               eval_metric = "auc",
+               eval_metric = "error") # Set evaluation metric to use
+
+boost_preds_3 <- predict(bst_3, dtest3) # Create predictions for xgboost model
+
+pred_dat3 <- cbind.data.frame(boost_preds_3 , test_data$entry_result)#
+# Convert predictions to classes, using optimal cut-off
+boost_pred_class3 <- rep(0, length(boost_preds_3))
+boost_pred_class3[boost_preds_3 >= 0.5] <- 1
+
+###############################
+t3 <- table(boost_pred_class3, test_data$entry_result) # Create table
+confusionMatrix(t3, positive = "1") # Produce confusion matrix
+```
+
+
+# Sources
+https://www.espn.com/tennis/story/_/id/35414286/the-stunning-financial-reality-high-cost-pro-tennis
+
+
+# Other Notes
+I do not believe anyone has attempted a report that I am constructing. Tennis data is hard to come by, and data analytics in general is still in its infancy when it comes to the beginning of its time. I hope to continue to improve these models and algorithms to showcase what we can learn from data in the tennis world and encourage others to jump into the stats with me along with sharing the game with others.
+
+# Citations
+Data used for this report was taken from Kaggle, primarily the ATP data consisting of the rankings, serving and break point data, and tournament data. The prize money data was scrapped from online sources and was created myself, as there is no current version of the data anywhere available to the public domain.
